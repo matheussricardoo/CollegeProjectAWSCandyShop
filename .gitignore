@@ -1,0 +1,73 @@
+# SSH Keys - NEVER commit these!
+*.pem
+*.ppk
+projeto-web-key.pem
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env/
+.venv/
+pip-wheel-metadata/
+pip-log.txt
+pip-delete-this-directory.txt
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Arquivos de ambiente
+.env
+.venv
+*.env.*
+.python-version
+
+# VSCode
+.vscode/
+.history/
+.idea/
+.ropeproject/
+
+# AWS credentials (if any)
+.aws/
+credentials
+config
+
+# Docker
+.dockerignore
+
+# Logs
+*.log
+logs/
+coverage/
+.coverage
+.coverage.*
+.pytest_cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+*.db
+.tox/
+.nox/
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
