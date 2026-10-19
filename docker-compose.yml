@@ -1,4 +1,3 @@
-version: '3.9'
 services:
   backend:
     build:
@@ -6,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: doces-backend
     ports:
-      - "25000:25000"
+      - "127.0.0.1:25000:25000"
     restart: unless-stopped
 
   frontend:
@@ -17,7 +16,7 @@ services:
     environment:
       - BACKEND_URL=http://backend:25000
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       - backend
     restart: unless-stopped

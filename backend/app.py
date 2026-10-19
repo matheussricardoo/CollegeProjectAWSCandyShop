@@ -1,3 +1,7 @@
+"""In-memory academic catalog and order API.
+
+Academic project by Matheus Ricardo; local demonstration, not a production service.
+"""
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datetime import datetime
@@ -36,60 +40,63 @@ def get_all_products():
 
 @app.route('/api/products/lowstock')
 def get_lowstock_products():
-    threshold = int(request.args.get('threshold', 10))
-    lowstock_products = [p for p in products_db if p['stock'] <= threshold]
-    return jsonify({
-        "products": lowstock_products,
-        "count": len(lowstock_products),
-        "threshold": threshold
-    })
+    try:
+        threshold = int(request.args.get('threshold', 10))
+        if threshold < 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        return jsonify({"error": "threshold must be a non-negative integer"}), 400
+    products = [p for p in products_db if p['stock'] <= threshold]
+    return jsonify({"products": products, "count": len(products), "threshold": threshold})
+
+
+from threading import Lock
+inventory_lock = Lock()
+
 
 @app.route('/api/orders', methods=['POST'])
 def create_order():
     global next_order_id
-    try:
-        data = request.get_json()
-        if not data or 'items' not in data:
-            return jsonify({"error": "Items são obrigatórios"}), 400
-        items = data['items']
-        customer = data.get('customer', {})
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get('items'), list) or not data['items']:
+        return jsonify({"error": "items must be a non-empty array"}), 400
+    customer = data.get('customer', {})
+    if not isinstance(customer, dict):
+        return jsonify({"error": "customer must be an object"}), 400
+    quantities = {}
+    for item in data['items']:
+        if not isinstance(item, dict):
+            return jsonify({"error": "Each item must be an object"}), 400
+        product_id = item.get('product_id')
+        quantity = item.get('quantity', 1)
+        if type(product_id) is not int or type(quantity) is not int or quantity <= 0:
+            return jsonify({"error": "product_id must be an integer and quantity a positive integer"}), 400
+        quantities[product_id] = quantities.get(product_id, 0) + quantity
+
+    with inventory_lock:
         order_items = []
-        total = 0
-        for item in items:
-            product_id = item.get('product_id')
-            quantity = item.get('quantity', 1)
+        for product_id, quantity in quantities.items():
             product = next((p for p in products_db if p['id'] == product_id), None)
-            if not product:
-                return jsonify({"error": f"Produto {product_id} não encontrado"}), 404
+            if product is None:
+                return jsonify({"error": f"Product {product_id} not found"}), 404
             if product['stock'] < quantity:
-                return jsonify({"error": f"Estoque insuficiente para {product['name']}"}), 400
-            subtotal = product['price'] * quantity
-            total += subtotal
+                return jsonify({"error": f"Insufficient stock for {product['name']}"}), 400
             order_items.append({
-                "product_id": product_id,
-                "product_name": product['name'],
-                "quantity": quantity,
-                "unit_price": product['price'],
-                "subtotal": subtotal
+                "product_id": product_id, "product_name": product['name'],
+                "quantity": quantity, "unit_price": product['price'],
+                "subtotal": round(product['price'] * quantity, 2),
             })
-            product['stock'] -= quantity
+        for product in products_db:
+            product['stock'] -= quantities.get(product['id'], 0)
         order = {
-            "id": next_order_id,
-            "customer": customer,
-            "items": order_items,
-            "total": round(total, 2),
-            "created_at": datetime.now().isoformat()
+            "id": next_order_id, "customer": customer, "items": order_items,
+            "total": round(sum(item['subtotal'] for item in order_items), 2),
+            "created_at": datetime.now().isoformat(),
         }
         orders_db.append(order)
         next_order_id += 1
-        return jsonify({
-            "success": True,
-            "order": order
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"success": True, "order": order}), 201
+
 
 if __name__ == '__main__':
-    print("Iniciando API da Loja de Doces")
-    print("Rodando na porta 25000")
-    app.run(host='0.0.0.0', port=25000, debug=True)
+    app.run(host='0.0.0.0', port=25000, debug=False)

@@ -71,3 +71,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+*.py[cod]
+xcuserdata/
+*.xcuserstate
